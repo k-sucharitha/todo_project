@@ -11,6 +11,12 @@ from django.contrib.auth import login
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+# Imports for Reordering Feature
+from django.views import View
+from django.shortcuts import redirect
+from django.db import transaction
+from .forms import PositionForm
+
 class CustomLoginView(LoginView):
     template_name = 'base/login.html'
     fields = '__all__'
@@ -58,7 +64,6 @@ class TaskList(LoginRequiredMixin, ListView):
         search_input = self.request.GET.get('search', '')
         if search_input:
             context['tasks'] = context['tasks'].filter(title__icontains=search_input)
-        
         context['search_input'] = search_input
         return context
 
@@ -93,3 +98,14 @@ class DeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('tasks') 
 
 
+class TaskReorder(View):
+    def post(self, request):
+        form = PositionForm(request.POST)
+
+        if form.is_valid():
+            position_list = form.cleaned_data["position"].split(',')
+
+            with transaction.atomic():
+                self.request.user.set_task_order(position_list)
+
+        return redirect(reverse_lazy('tasks'))
